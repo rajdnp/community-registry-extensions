@@ -6,88 +6,188 @@ import json
 import yaml
 import pytest
 import cfn_guard_rs.errors
-from cfn_guard_rs import Comparison, run_checks, DataOutput, NameInfo
+from cfn_guard_rs import (
+    run_checks,
+    FileReport,
+    RuleReport,
+    Messages,
+    ClauseReport,
+    UnaryReport,
+    BinaryReport,
+    UnaryComparison,
+    UnaryCheck,
+    GuardClauseReport,
+    BinaryCheck,
+    BinaryComparison,
+)
 
 
 @pytest.mark.parametrize(
-    "template,rules,expected",
+    "template,rules,expected,values_from,values_to",
     [
         (
             "python/tests/fixtures/templates/s3_bucket_name_valid.yaml",
             "python/tests/fixtures/rules/s3_bucket_name.guard",
-            DataOutput(
+            FileReport(
+                name="",
+                metadata={},
+                status="PASS",
                 data_from="cfn_guard_rs",
                 rules_from="cfn_guard_rs",
-                not_compliant={},
+                not_compliant=[],
                 not_applicable=[],
                 compliant=["default"],
             ),
+            [],
+            [],
         ),
         (
             "python/tests/fixtures/templates/s3_bucket_name_invalid.yaml",
             "python/tests/fixtures/rules/s3_bucket_name.guard",
-            DataOutput(
+            FileReport(
+                name="",
+                metadata={},
+                status="FAIL",
                 data_from="cfn_guard_rs",
                 rules_from="cfn_guard_rs",
-                not_compliant={
-                    "default": [
-                        NameInfo(
-                            rule="default",
-                            path="/Resources/Bucket/Properties/BucketName",
-                            provided=1,
-                            expected=None,
-                            comparison=Comparison(
-                                operator="IsString", not_operator_exists=False
-                            ),
-                            message="",
-                            error=None,
-                        )
-                    ]
-                },
+                not_compliant=[
+                    ClauseReport(
+                        Rule=RuleReport(
+                            name="default",
+                            metadata={},
+                            messages=Messages(),
+                            checks=[
+                                ClauseReport(
+                                    Clause=GuardClauseReport(
+                                        Unary=UnaryReport(
+                                            context=" BucketName IS STRING  ",
+                                            messages=Messages(
+                                                custom_message="",
+                                                error_message=(
+                                                    "Check was not compliant as "
+                                                    "property [/Resources/Bucket/Properties"
+                                                    "/BucketName[L:0,C:0]] was not string."
+                                                ),
+                                            ),
+                                            check=UnaryCheck(
+                                                Resolved=UnaryComparison(
+                                                    value={
+                                                        "path": (
+                                                            "/Resources/Bucket/"
+                                                            "Properties/BucketName"
+                                                        ),
+                                                        "value": 1,
+                                                    },
+                                                    comparison=("IsString", False),
+                                                )
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ],
+                        ),
+                    )
+                ],
                 not_applicable=[],
                 compliant=[],
             ),
+            [
+                {
+                    "path": "/Resources/Bucket/Properties/BucketName",
+                    "value": 1,
+                }
+            ],
+            [None],
         ),
         (
             "python/tests/fixtures/templates/s3_bucket_public_access_valid.yaml",
             "python/tests/fixtures/rules/s3_bucket_public_access.guard",
-            DataOutput(
+            FileReport(
+                name="",
+                metadata={},
+                status="PASS",
                 data_from="cfn_guard_rs",
                 rules_from="cfn_guard_rs",
-                not_compliant={},
+                not_compliant=[],
                 not_applicable=[],
                 compliant=["S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED"],
             ),
+            [],
+            [],
         ),
         (
             "python/tests/fixtures/templates/s3_bucket_public_access_invalid.yaml",
             "python/tests/fixtures/rules/s3_bucket_public_access.guard",
-            DataOutput(
+            FileReport(
+                name="",
+                metadata={},
+                status="FAIL",
                 data_from="cfn_guard_rs",
                 rules_from="cfn_guard_rs",
-                not_compliant={
-                    "S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED": [
-                        NameInfo(
-                            rule="S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED",
-                            # pylint: disable=line-too-long
-                            path="/Resources/Bucket/Properties/PublicAccessBlockConfiguration/BlockPublicAcls",
-                            provided="false",
-                            expected="true",
-                            comparison=Comparison(
-                                operator="Eq", not_operator_exists=False
-                            ),
-                            message="",
-                            error=None,
-                        )
-                    ]
-                },
+                not_compliant=[
+                    ClauseReport(
+                        Rule=RuleReport(
+                            name="S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED",
+                            metadata={},
+                            messages=Messages(),
+                            checks=[
+                                ClauseReport(
+                                    Clause=GuardClauseReport(
+                                        Binary=BinaryReport(
+                                            context=(
+                                                " %s3_buckets_level_public_access_"
+                                                "prohibited[*].Properties."
+                                                "PublicAccessBlockConfiguration."
+                                                'BlockPublicAcls EQUALS  "true"'
+                                            ),
+                                            messages=Messages(
+                                                custom_message="",
+                                                error_message=(
+                                                    "Check was not compliant as property"
+                                                    " value [Path=/Resources/Bucket/Properties/"
+                                                    "PublicAccessBlockConfiguration/BlockPublicAcls"
+                                                    '[L:0,C:0] Value="false"] not equal to value '
+                                                    '[Path=[L:0,C:0] Value="true"].'
+                                                ),
+                                            ),
+                                            check=BinaryCheck(
+                                                Resolved=BinaryComparison(
+                                                    from_={
+                                                        "path": (
+                                                            "/Resources/Bucket/Properties/"
+                                                            "PublicAccessBlockConfiguration/"
+                                                            "BlockPublicAcls"
+                                                        ),
+                                                        "value": "false",
+                                                    },
+                                                    to_={"path": "", "value": "true"},
+                                                    comparison=["Eq", False],
+                                                )
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ],
+                        ),
+                    )
+                ],
                 not_applicable=[],
                 compliant=[],
             ),
+            [
+                {
+                    "path": (
+                        "/Resources/Bucket/Properties/"
+                        "PublicAccessBlockConfiguration/BlockPublicAcls"
+                    ),
+                    "value": "false",
+                }
+            ],
+            [{"path": "", "value": "true"}],
         ),
     ],
 )
-def test_run_checks(template, rules, expected):
+def test_run_checks(template, rules, expected, values_from, values_to):
     """Test transactions against run_checks"""
     with open(template, encoding="utf8") as file:
         template_str = yaml.safe_load(file)
@@ -96,6 +196,11 @@ def test_run_checks(template, rules, expected):
 
     result = run_checks(template_str, rules)
     assert result == expected
+    for i, value_from in enumerate(values_from):
+        assert result.not_compliant[0].Rule.checks[i].value_from == value_from
+
+    for i, value_to in enumerate(values_to):
+        assert result.not_compliant[i].Rule.checks[i].value_to == value_to
 
 
 @pytest.mark.parametrize(
@@ -117,9 +222,9 @@ def test_run_checks(template, rules, expected):
             cfn_guard_rs.errors.ParseError,
             ValueError,
             (
-                "Parser Error when parsing Parsing Error Error parsing file  "
+                "Parser Error when parsing `Parsing Error Error parsing file  "
                 "at line 1 at column 17, when handling , fragment "
-                "{\n    Properties\n        BucketName is_string\n    }\n}\n"
+                "{\n    Properties\n        BucketName is_string\n    }\n}`"
             ),
         ),
     ],

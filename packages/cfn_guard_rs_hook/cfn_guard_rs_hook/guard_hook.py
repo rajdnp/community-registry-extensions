@@ -283,27 +283,29 @@ class GuardHook(Hook):
                 progress.status = OperationStatus.FAILED
                 progress.errorCode = HandlerErrorCode.NonCompliant
                 progress.message = ""
-                for name, errs in guard_result.not_compliant.items():
-                    for err in errs:
-                        path = err.path
-                        if err.message:
+                for not_compliant in guard_result.not_compliant:
+                    LOG.debug("Not Compliant: %s", not_compliant)
+                    rule = not_compliant.Rule
+                    if rule is None:
+                        progress.message += "Found not compliant without rule. "
+                        continue
+                    for err in rule.checks:
+                        LOG.debug("Rule check: %s", err)
+                        clause = err.Clause
+                        if clause is None:
+                            progress.message += "Found not compliant without a clause. "
+                            continue
+                        if err.value_from:
                             progress.message += (
-                                f"Rule [{name}] failed on "
-                                f"property [{path}] and got error [{err.message}]. "
+                                f"Rule [{rule.name}] failed on "
+                                f"property [{err.value_from.get('path')}] "
+                                f"and got error [{clause.messages}]. "
                             )
                         else:
-                            if err.comparison:
-                                progress.message += (
-                                    f"Rule [{name}] failed on "
-                                    f"property [{path}] failed comparison operator "
-                                    f"[{err.comparison.operator}] and not exists "
-                                    f"of [{err.comparison.not_operator_exists}]. "
-                                )
-                            else:
-                                progress.message += (
-                                    f"Rule [{name}] failed on "
-                                    f"property [{path}] failed. "
-                                )
+                            progress.message += (
+                                f"Rule [{rule.name}] failed "
+                                f"with error [{clause.messages}]. "
+                            )
         progress.message = progress.message.strip()
         LOG.debug("Progress Event: %s", progress)
         return progress

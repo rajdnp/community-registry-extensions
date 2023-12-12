@@ -6,7 +6,7 @@
 """
 import logging
 import json
-from cfn_guard_rs.interface import DataOutput
+from cfn_guard_rs.interface import FileReport
 
 # pylint: disable=no-name-in-module
 from cfn_guard_rs.cfn_guard_rs import (
@@ -20,7 +20,7 @@ from . import errors
 LOG = logging.getLogger(__name__)
 
 
-def run_checks(data: dict, rules: str) -> DataOutput:
+def run_checks(data: dict, rules: str) -> FileReport:
     """
     Executes run_checks against Guard
 
@@ -40,13 +40,12 @@ def run_checks(data: dict, rules: str) -> DataOutput:
     """
     try:
         raw_output = run_checks_rs(json.dumps(data), rules, False)
+        LOG.debug("Raw output: %s", raw_output)
         output = json.loads(raw_output)
-        # remove the lib set items and replace with our defaults
-        result = DataOutput(**output)
 
-        return result
+        return FileReport.from_object(output)
     except json.JSONDecodeError as err:
-        LOG.debug(
+        LOG.info(
             "JSON decoding error when processing return value [%s] got error: %s",
             raw_output,
             err,
@@ -57,9 +56,10 @@ def run_checks(data: dict, rules: str) -> DataOutput:
     except CfnGuardParseError as err:
         raise errors.ParseError(str(err))
     except Exception as err:
-        LOG.debug(
+        LOG.info(
             "Received unknown exception [%s] while running checks, got error: %s",
             type(err),
             err,
+            exc_info=True,
         )
         raise errors.UnknownError(str(err))

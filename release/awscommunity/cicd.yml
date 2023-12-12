@@ -114,6 +114,32 @@ Resources:
       ManagedPolicyArns:
         - Fn::ImportValue: !Sub "cep-${Env}-common-build-project-policy"
 
+  AppSyncSchemaBreakingChangDetectionBuildProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - Fn::ImportValue: !Sub "cep-${Env}-common-build-project-policy"
+
+  S3AccessControlBuildProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - Fn::ImportValue: !Sub "cep-${Env}-common-build-project-policy"
+
   HookEC2SecurityGroupRestrictedSSHBuildProjectRole:
     Type: AWS::IAM::Role
     Properties:
@@ -249,57 +275,6 @@ Resources:
     Properties:
       AssumeRolePolicyDocument:
         Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: codebuild.amazonaws.com
-        Version: '2012-10-17'
-      ManagedPolicyArns:
-        - Fn::ImportValue: !Sub "cep-${Env}-common-build-project-policy"
-  
-  SSMDocumentEBSVolumeModuleBuildProjectRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-            - ssm:ListDocuments
-            - ssm:ListDocumentVersions
-            - ssm:DescribeDocument
-            - ssm:DeleteDocument
-            - ssm:GetDocument
-            Effect: Allow
-            Resource: "*"
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: codebuild.amazonaws.com
-        Version: '2012-10-17'
-      ManagedPolicyArns:
-        - Fn::ImportValue: !Sub "cep-${Env}-common-build-project-policy"
-    
-  IotAnalyticsPipelineModuleBuildProjectRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-            - iotanalytics:*
-            - iot:CreateTopicRule
-            - iot:DeleteTopicRule
-            - iot:ReplaceTopicRule
-            - iot:ListTopicRules
-            - iot:GetTopicRule
-            - iot:EnableTopicRule
-            - iot:DisableTopicRule
-            - iot:CreateTopicRuleDestination
-            - iot:DeleteTopicRuleDestination
-            - iot:UpdateTopicRuleDestination
-            - iot:GetTopicRuleDestination
-            - iot:ConfirmTopicRuleDestination
-            - iot:ListTopicRuleDestinations
-            Effect: Allow
-            Resource: "*"
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
@@ -877,7 +852,7 @@ Resources:
               - iam:UpdateRoleDescription
             Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/TrailS3Cleanup-integ-*-awscommunity-kms-encryptionsettings'
           - Effect: Allow
-            Action: 
+            Action:
               - iam:CreateServiceLinkedRole
               - iam:DeleteServiceLinkedRole
               - iam:GetServiceLinkedRoleDeletionStatus
@@ -886,6 +861,34 @@ Resources:
       PolicyName: kms-encryptionsettings-build-project-policy
       Roles:
         - !Ref KMSEncryptionSettingsBuildProjectRole
+
+  AppSyncSchemaBreakingChangeDetectionBuildProjectRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - appsync:*
+            Effect: Allow
+            Resource: "*"
+        Version: '2012-10-17'
+      PolicyName: appsync-breaking-change-detection-build-project-policy
+      Roles:
+        - !Ref AppSyncSchemaBreakingChangDetectionBuildProjectRole
+
+  S3AccessControlBuildProjectPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource: "*"
+        Version: '2012-10-17'
+      PolicyName: s3-accesscontrol-build-project-policy
+      Roles:
+        - !Ref S3AccessControlBuildProjectRole
 
   ApplicationAutoscalingScheduledActionBuildProjectRolePolicy:
     Type: AWS::IAM::Policy
@@ -1258,50 +1261,6 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec: !Sub "modules/${Env}-buildspec.yml"
       TimeoutInMinutes: 480
-  
-  SSMDocumentEBSVolumeModuleBuildProject:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Sub "${PrefixLower}-${Env}-ssm-document-ebsvolume-module"
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        ComputeType: BUILD_GENERAL1_LARGE
-        Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cep-cicd:latest"
-        ImagePullCredentialsType: SERVICE_ROLE
-        PrivilegedMode: true
-        Type: LINUX_CONTAINER
-        EnvironmentVariables:
-        - Name: MODULE_PATH
-          Type: PLAINTEXT
-          Value: "placeholder-for-path-to-module"
-      ServiceRole: !GetAtt SSMDocumentEBSVolumeModuleBuildProjectRole.Arn
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: !Sub "modules/${Env}-buildspec.yml"
-      TimeoutInMinutes: 480
-
-IotAnalyticsPipelineModuleBuildProject:
-  Type: AWS::CodeBuild::Project
-  Properties:
-    Name: !Sub "${PrefixLower}-${Env}-iot-analytics-pipeline-module"
-    Artifacts:
-      Type: CODEPIPELINE
-    Environment:
-      ComputeType: BUILD_GENERAL1_LARGE
-      Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cep-cicd:latest"
-      ImagePullCredentialsType: SERVICE_ROLE
-      PrivilegedMode: true
-      Type: LINUX_CONTAINER
-      EnvironmentVariables:
-      - Name: MODULE_PATH
-        Type: PLAINTEXT
-        Value: "placeholder-for-path-to-module"
-    ServiceRole: !GetAtt IotAnalyticsPipelineModuleBuildProjectRole.Arn
-    Source:
-      Type: CODEPIPELINE
-      BuildSpec: !Sub "modules/${Env}-buildspec.yml"
-    TimeoutInMinutes: 480
 
   AlternateContactBuildProjectRole:
     Type: AWS::IAM::Role
@@ -1382,6 +1341,53 @@ IotAnalyticsPipelineModuleBuildProject:
           Type: PLAINTEXT
           Value: "placeholder-for-path-to-hook"
       ServiceRole: !GetAtt KMSEncryptionSettingsBuildProjectRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Sub "hooks/${Env}-buildspec-java.yml"
+      TimeoutInMinutes: 480
+
+  AppSyncSchemaBreakingChangDetectionBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${PrefixLower}-${Env}-appsync-breakingchangedetection"
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cep-cicd:latest"
+        ImagePullCredentialsType: SERVICE_ROLE
+        PrivilegedMode: true
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: HOOK_PATH
+            Type: PLAINTEXT
+            Value: "placeholder-for-path-to-hook"
+      ServiceRole: !GetAtt AppSyncSchemaBreakingChangDetectionBuildProjectRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !If
+          - IsBeta
+          - "hooks/beta-buildspec-java-pre-update-only.yml"
+          - !Sub "hooks/${Env}-buildspec-java.yml"
+      TimeoutInMinutes: 480
+
+  S3AccessControlBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${PrefixLower}-${Env}-s3-accesscontrol"
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cep-cicd:latest"
+        ImagePullCredentialsType: SERVICE_ROLE
+        PrivilegedMode: true
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+        - Name: HOOK_PATH
+          Type: PLAINTEXT
+          Value: "placeholder-for-path-to-hook"
+      ServiceRole: !GetAtt S3AccessControlBuildProjectRole.Arn
       Source:
         Type: CODEPIPELINE
         BuildSpec: !Sub "hooks/${Env}-buildspec-java.yml"
@@ -1485,11 +1491,11 @@ IotAnalyticsPipelineModuleBuildProject:
               - !GetAtt CloudFrontWebAclAssociationBuildProject.Arn
               - !GetAtt S3BucketModuleBuildProject.Arn
               - !GetAtt CloudFrontS3WebsiteModuleBuildProject.Arn
-              - !GetAtt SSMDocumentEBSVolumeModuleBuildProject.Arn
-              - !GetAtt IotAnalyticsPipelineModuleBuildProject.Arn
               - !GetAtt AlternateContactBuildProject.Arn
               - !GetAtt KMSEncryptionSettingsBuildProject.Arn
+              - !GetAtt S3AccessControlBuildProject.Arn
               - !GetAtt ApplicationAutoscalingScheduledActionBuildProject.Arn
+              - !GetAtt AppSyncSchemaBreakingChangDetectionBuildProject.Arn
           - Action:
               - kms:*
             Effect: Allow
@@ -1558,10 +1564,10 @@ IotAnalyticsPipelineModuleBuildProject:
                 - !GetAtt CloudFrontWebAclAssociationBuildProjectRole.Arn
                 - !GetAtt S3BucketModuleBuildProjectRole.Arn
                 - !GetAtt CloudFrontS3WebsiteModuleBuildProjectRole.Arn
-                - !GetAtt SSMDocumentEBSVolumeModuleBuildProjectRole.Arn
-                - !GetAtt IotAnalyticsPipelineModuleBuildProjectRole.Arn
                 - !GetAtt KMSEncryptionSettingsBuildProjectRole.Arn
+                - !GetAtt S3AccessControlBuildProjectRole.Arn
                 - !GetAtt ApplicationAutoscalingScheduledActionBuildProjectRole.Arn
+                - !GetAtt AppSyncSchemaBreakingChangDetectionBuildProjectRole.Arn
             Resource: "*"
       MultiRegion: true
 
@@ -1629,25 +1635,6 @@ IotAnalyticsPipelineModuleBuildProject:
                     ]
                 RunOrder: 2
               - !Ref AWS::NoValue
-                #            - Name: CloudFrontWebAclAssociation
-                #              InputArtifacts:
-                #                - Name: extensions-source
-                #              ActionTypeId:
-                #                Category: Build
-                #                Owner: AWS
-                #                Provider: CodeBuild
-                #                Version: 1
-                #              Configuration:
-                #                ProjectName: !Ref CloudFrontWebAclAssociationBuildProject
-                #                EnvironmentVariables: |-
-                #                  [
-                #                    {
-                #                      "name": "RESOURCE_PATH",
-                #                      "type": "PLAINTEXT",
-                #                      "value": "resources/CloudFront_WebACLAssociation"
-                #                    }
-                #                  ]
-                #              RunOrder: 2
             - Name: S3DeleteBucketContents
               InputArtifacts:
                 - Name: extensions-source
@@ -1696,11 +1683,6 @@ IotAnalyticsPipelineModuleBuildProject:
                 Version: 1
               Configuration:
                 ProjectName: !Ref DynamoDBItemBuildProject
-                # BatchEnabled:
-                #   !If
-                #     - IsProd
-                #     - true
-                #     - false
                 EnvironmentVariables: |-
                   [
                     {
@@ -1720,11 +1702,6 @@ IotAnalyticsPipelineModuleBuildProject:
                 Version: 1
               Configuration:
                 ProjectName: !Ref TimeStaticBuildProject
-                # BatchEnabled:
-                #   !If
-                #     - IsProd
-                #     - true
-                #     - false
                 EnvironmentVariables: |-
                   [
                     {
@@ -1744,11 +1721,6 @@ IotAnalyticsPipelineModuleBuildProject:
                 Version: 1
               Configuration:
                 ProjectName: !Ref TimeSleepBuildProject
-                # BatchEnabled:
-                #   !If
-                #     - IsProd
-                #     - true
-                #     - false
                 EnvironmentVariables: |-
                   [
                     {
@@ -1768,11 +1740,6 @@ IotAnalyticsPipelineModuleBuildProject:
                 Version: 1
               Configuration:
                 ProjectName: !Ref TimeOffsetBuildProject
-                # BatchEnabled:
-                #   !If
-                #     - IsProd
-                #     - true
-                #     - false
                 EnvironmentVariables: |-
                   [
                     {
@@ -1836,44 +1803,6 @@ IotAnalyticsPipelineModuleBuildProject:
                       "name": "MODULE_PATH",
                       "type": "PLAINTEXT",
                       "value": "modules/CloudFront_S3Website"
-                    }
-                  ]
-              RunOrder: 2
-            - Name: SSMDocumentEBSVolumeModule
-              InputArtifacts:
-                - Name: extensions-source
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: 1
-              Configuration:
-                ProjectName: !Ref SSMDocumentEBSVolumeModuleBuildProject
-                EnvironmentVariables: |-
-                  [
-                    {
-                      "name": "MODULE_PATH",
-                      "type": "PLAINTEXT",
-                      "value": "modules/SSM_Document_ResizeVolume"
-                    }
-                  ]
-              RunOrder: 2
-            - Name: IotAnalyticsPipelineModule
-              InputArtifacts:
-                - Name: extensions-source
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: 1
-              Configuration:
-                ProjectName: !Ref IotAnalyticsPipelineModuleBuildProject
-                EnvironmentVariables: |-
-                  [
-                    {
-                      "name": "MODULE_PATH",
-                      "type": "PLAINTEXT",
-                      "value": "modules/IOT_ANALYTICS_PIPELINE"
                     }
                   ]
               RunOrder: 2
@@ -1952,7 +1881,26 @@ IotAnalyticsPipelineModuleBuildProject:
                       "value": "hooks/KMS_EncryptionSettings"
                     }
                   ]
-              RunOrder: 4
+              RunOrder: 5
+            - Name: S3AccessControl
+              InputArtifacts:
+                - Name: extensions-source
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref S3AccessControlBuildProject
+                EnvironmentVariables: |-
+                  [
+                    {
+                      "name": "HOOK_PATH",
+                      "type": "PLAINTEXT",
+                      "value": "hooks/S3_AccessControl"
+                    }
+                  ]
+              RunOrder: 1
             - Name: ApplicationAutoscalingScheduledAction
               InputArtifacts:
                 - Name: extensions-source
@@ -1969,6 +1917,25 @@ IotAnalyticsPipelineModuleBuildProject:
                       "name": "RESOURCE_PATH",
                       "type": "PLAINTEXT",
                       "value": "resources/ApplicationAutoscaling_ScheduledAction"
+                    }
+                  ]
+              RunOrder: 1
+            - Name: AppSyncSchemaBreakingChangeDetection
+              InputArtifacts:
+                - Name: extensions-source
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref AppSyncSchemaBreakingChangDetectionBuildProject
+                EnvironmentVariables: |-
+                  [
+                    {
+                      "name": "HOOK_PATH",
+                      "type": "PLAINTEXT",
+                      "value": "hooks/AppSync_BreakingChangeDetection"
                     }
                   ]
               RunOrder: 1
@@ -1991,26 +1958,6 @@ IotAnalyticsPipelineModuleBuildProject:
                   ObjectKey: source.zip
                   KMSEncryptionKeyARN: !GetAtt PipelineKey.Arn
           - !Ref AWS::NoValue
-                #            - Name: CloudFrontLoggingEnabled
-                #              InputArtifacts:
-                #                - Name: extensions-source
-                #              ActionTypeId:
-                #                Category: Build
-                #                Owner: AWS
-                #                Provider: CodeBuild
-                #                Version: 1
-                #              Configuration:
-                #                ProjectName: !Ref CloudFrontLoggingEnabledBuildProject
-                #                BatchEnabled: true
-                #                EnvironmentVariables: |-
-                #                  [
-                #                    {
-                #                      "name": "HOOK_PATH",
-                #                      "type": "PLAINTEXT",
-                #                      "value": "hooks/CloudFront_LoggingEnabled"
-                #                    }
-                #                  ]
-                #              RunOrder: 2
 
   PublishBuildBucketRole:
     Type: AWS::IAM::Role
@@ -2148,8 +2095,6 @@ IotAnalyticsPipelineModuleBuildProject:
               state: "$.detail.state"
               at: "$.time"
               account: "$.account"
-
-# Prod account resources
 
   PublishBuildBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -2305,8 +2250,6 @@ IotAnalyticsPipelineModuleBuildProject:
                 Resource:
                   - !Sub "arn:aws:kms:${AWS::Region}:${BetaAccountId}:key/*"
 
-# Delay Function to solve race conditions where the resource is not actually ready
-
   DelayFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -2340,7 +2283,7 @@ IotAnalyticsPipelineModuleBuildProject:
       Handler: delay.handler
       Timeout: 120
       Role: !GetAtt DelayFunctionRole.Arn
-      Runtime: python3.7
+      Runtime: python3.9
       Code: !Rain::S3
         Path: ../delay.py
         Zip: true
